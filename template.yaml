@@ -1,0 +1,49 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+
+Description: Mail Checker - ビジネスメール添削（日英対応）
+
+Globals:
+  Function:
+    Runtime: nodejs20.x
+    Timeout: 30
+    MemorySize: 256
+    Environment:
+      Variables:
+        GEMINI_API_KEY: '{{resolve:ssm-secure:/mail-checker/gemini-api-key}}'
+
+Resources:
+  MailCheckerApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: prod
+      Cors:
+        AllowMethods: "'POST,OPTIONS'"
+        AllowHeaders: "'Content-Type'"
+        AllowOrigin: "'https://mail-checker.eggsystems.jp'"
+
+  ReviewFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: mail-checker-review
+      Handler: review.handler
+      CodeUri: backend/dist/
+      Description: ビジネスメール添削（日英対応）
+      Events:
+        ReviewApi:
+          Type: Api
+          Properties:
+            RestApiId: !Ref MailCheckerApi
+            Path: /review
+            Method: post
+        ReviewOptions:
+          Type: Api
+          Properties:
+            RestApiId: !Ref MailCheckerApi
+            Path: /review
+            Method: options
+
+Outputs:
+  ApiUrl:
+    Description: API Gateway URL
+    Value: !Sub 'https://${MailCheckerApi}.execute-api.${AWS::Region}.amazonaws.com/prod'
